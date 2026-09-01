@@ -2,9 +2,15 @@ import type {
   CatalogueSearchPayload,
   CatalogueSearchResult,
   DownloadSource,
+  GameTrackingStatus,
 } from "@types";
 
-import { useAppDispatch, useAppSelector, useFormat } from "@renderer/hooks";
+import {
+  useAppDispatch,
+  useAppSelector,
+  useFormat,
+  useGameTracking,
+} from "@renderer/hooks";
 import {
   lazy,
   Suspense,
@@ -93,6 +99,7 @@ const sortValues = [
 ] as const;
 
 type CatalogueSortValue = (typeof sortValues)[number];
+type CatalogueTrackingFilter = GameTrackingStatus | "all" | "not_played_yet";
 
 const protonCompatibilityThresholds: CompatibilityThreshold<
   CatalogueSearchPayload["protondbSupportBadges"][number]
@@ -147,6 +154,9 @@ export default function Catalogue() {
   const [resultsMode, setResultsMode] = useState(mode);
 
   const [itemsCount, setItemsCount] = useState(0);
+  const [trackingFilter, setTrackingFilter] =
+    useState<CatalogueTrackingFilter>("all");
+  const { getTrackingStatus } = useGameTracking();
 
   const [showClassicsOnboarding, setShowClassicsOnboarding] = useState(false);
   const classicsOnboardingTriggeredRef = useRef(false);
@@ -226,6 +236,18 @@ export default function Catalogue() {
 
   const isModeTransitioning = resultsMode !== mode;
   const showSkeleton = isLoading || isModeTransitioning;
+
+  const visibleResults = useMemo(() => {
+    if (trackingFilter === "all") return results;
+
+    return results.filter((game) => {
+      const status = getTrackingStatus(game.shop, game.objectId);
+
+      return trackingFilter === "not_played_yet"
+        ? status === null
+        : status === trackingFilter;
+    });
+  }, [getTrackingStatus, results, trackingFilter]);
 
   useEffect(() => {
     const requestId = ++requestSequenceRef.current;
@@ -643,6 +665,43 @@ export default function Catalogue() {
           </div>
 
           <div className="catalogue__sort-inline">
+            <span className="catalogue__sort-label">{t("tracking")}</span>
+            <SelectField
+              theme="dark"
+              className="catalogue__sort-select"
+              value={trackingFilter}
+              options={[
+                { key: "all", value: "all", label: t("tracking_all") },
+                {
+                  key: "playing",
+                  value: "playing",
+                  label: t("tracking_playing"),
+                },
+                {
+                  key: "finished",
+                  value: "finished",
+                  label: t("tracking_finished"),
+                },
+                {
+                  key: "dropped",
+                  value: "dropped",
+                  label: t("tracking_dropped"),
+                },
+                {
+                  key: "wishlist",
+                  value: "wishlist",
+                  label: t("tracking_wishlist"),
+                },
+                {
+                  key: "not_played_yet",
+                  value: "not_played_yet",
+                  label: t("tracking_not_played_yet"),
+                },
+              ]}
+              onChange={(event) =>
+                setTrackingFilter(event.target.value as CatalogueTrackingFilter)
+              }
+            />
             <span className="catalogue__sort-label">{t("sort_by")}</span>
             <SelectField
               theme="dark"
@@ -741,11 +800,11 @@ export default function Catalogue() {
               ))}
             </SkeletonTheme>
           ) : mode === "classics" ? (
-            results.map((game) => (
+            visibleResults.map((game) => (
               <GameItemClassics key={game.id} game={game} />
             ))
           ) : (
-            results.map((game) => <GameItem key={game.id} game={game} />)
+            visibleResults.map((game) => <GameItem key={game.id} game={game} />)
           )}
 
           <div className="catalogue__pagination-container">

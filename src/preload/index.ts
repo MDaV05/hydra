@@ -10,6 +10,7 @@ import type {
   AppUpdaterEvent,
   StartGameDownloadPayload,
   GameRunning,
+  GameTrackingStatus,
   UpdateProfileRequest,
   SeedingStatus,
   UserAchievement,
@@ -987,6 +988,12 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("addGameToFavorites", shop, objectId),
   removeGameFromFavorites: (shop: GameShop, objectId: string) =>
     ipcRenderer.invoke("removeGameFromFavorites", shop, objectId),
+  getGameTracking: () => ipcRenderer.invoke("getGameTracking"),
+  setGameTrackingStatus: (
+    shop: GameShop,
+    objectId: string,
+    status: GameTrackingStatus | null
+  ) => ipcRenderer.invoke("setGameTrackingStatus", shop, objectId, status),
   assignGameToCollection: (
     shop: GameShop,
     objectId: string,

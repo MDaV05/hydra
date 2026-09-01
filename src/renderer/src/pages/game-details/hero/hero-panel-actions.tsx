@@ -7,15 +7,22 @@ import {
   PinSlashIcon,
   PlayIcon,
   PlusCircleIcon,
+  CheckIcon,
+  BookmarkIcon,
+  TagIcon,
+  XIcon,
 } from "@primer/octicons-react";
 import { Button, ConfirmationModal } from "@renderer/components";
+import { DropdownMenu } from "@renderer/components/dropdown-menu/dropdown-menu";
 import { XCircle } from "lucide-react";
 import {
   useDownload,
   useLibrary,
   useToast,
   useUserDetails,
+  useGameTracking,
 } from "@renderer/hooks";
+import type { GameTrackingStatus } from "@types";
 import { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -56,6 +63,7 @@ export function HeroPanelActions() {
     game?.download?.status === "active" && lastPacket?.gameId === game?.id;
 
   const { updateLibrary } = useLibrary();
+  const { getTrackingStatus, setTrackingStatus } = useGameTracking();
 
   const { showSuccessToast, showErrorToast } = useToast();
 
@@ -67,6 +75,35 @@ export function HeroPanelActions() {
   } | null>(null);
 
   const { t } = useTranslation("game_details");
+
+  const currentTrackingStatus =
+    shop && objectId ? getTrackingStatus(shop, objectId) : null;
+
+  const trackingStatusLabel = currentTrackingStatus
+    ? t(`tracking_${currentTrackingStatus}`)
+    : t("tracking_none");
+
+  const trackingStatusIcon = {
+    playing: <PlayIcon />,
+    finished: <CheckIcon />,
+    dropped: <XIcon />,
+    wishlist: <BookmarkIcon />,
+  } satisfies Record<GameTrackingStatus, React.ReactNode>;
+
+  const trackingMenuItems = [
+    {
+      label: t("tracking_none"),
+      icon: <TagIcon />,
+      onClick: () => void setTrackingStatus(shop, objectId!, null),
+    },
+    ...(["playing", "finished", "dropped", "wishlist"] as const).map(
+      (status) => ({
+        label: t(`tracking_${status}`),
+        icon: trackingStatusIcon[status],
+        onClick: () => void setTrackingStatus(shop, objectId!, status),
+      })
+    ),
+  ];
 
   useEffect(() => {
     const onOpenDiscSelection = (event: Event) => {
@@ -391,6 +428,25 @@ export function HeroPanelActions() {
       <div className="hero-panel-actions__container">
         {gameActionButton()}
         <div className="hero-panel-actions__separator" />
+        <DropdownMenu title={t("tracking")} items={trackingMenuItems}>
+          <Button
+            theme="outline"
+            disabled={deleting}
+            className="hero-panel-actions__action"
+            aria-label={t("tracking_action", {
+              status: trackingStatusLabel,
+            })}
+            tooltip={t("tracking_action", {
+              status: trackingStatusLabel,
+            })}
+          >
+            {currentTrackingStatus ? (
+              trackingStatusIcon[currentTrackingStatus]
+            ) : (
+              <TagIcon />
+            )}
+          </Button>
+        </DropdownMenu>
         <Button
           onClick={toggleGameFavorite}
           theme="outline"

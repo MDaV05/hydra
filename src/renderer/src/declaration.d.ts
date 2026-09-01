@@ -2,6 +2,8 @@ import type { AuthPage } from "@shared";
 import type {
   AppUpdaterEvent,
   GameShop,
+  GameTrackingRecord,
+  GameTrackingStatus,
   Steam250Game,
   DownloadProgress,
   SeedingStatus,
@@ -389,6 +391,12 @@ declare global {
     removeGameFromFavorites: (
       shop: GameShop,
       objectId: string
+    ) => Promise<void>;
+    getGameTracking: () => Promise<GameTrackingRecord[]>;
+    setGameTrackingStatus: (
+      shop: GameShop,
+      objectId: string,
+      status: GameTrackingStatus | null
     ) => Promise<void>;
     assignGameToCollection: (
       shop: GameShop,
