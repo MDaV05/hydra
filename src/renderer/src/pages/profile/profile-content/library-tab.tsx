@@ -7,12 +7,21 @@ import {
   HistoryIcon,
   StackIcon,
   DeviceDesktopIcon,
+  PlayIcon,
+  CheckIcon,
+  XIcon,
+  BookmarkIcon,
 } from "@primer/octicons-react";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { useCallback, useMemo, useState } from "react";
-import { useFormat, useLibrary, useToast } from "@renderer/hooks";
+import {
+  useFormat,
+  useLibrary,
+  useToast,
+  useGameTracking,
+} from "@renderer/hooks";
 import { logger } from "@renderer/logger";
-import type { LibraryGame, UserGame } from "@types";
+import type { GameTrackingStatus, LibraryGame, UserGame } from "@types";
 import { useCollectionContextMenu } from "@renderer/context";
 import { GameContextMenu } from "@renderer/components";
 import type { GameContextMenuGame } from "@renderer/components/game-context-menu/game-context-menu.types";
@@ -23,6 +32,7 @@ import "./profile-content.scss";
 
 type SortOption = "playtime" | "achievementCount" | "playedRecently";
 export type ProfilePlatform = "all" | "pc" | "classics";
+export type TrackingFilterOption = "all" | GameTrackingStatus;
 
 interface LibraryTabProps {
   sortBy: SortOption;
@@ -64,6 +74,7 @@ export function LibraryTab({
   const { t } = useTranslation("user_profile");
   const { numberFormatter } = useFormat();
   const { library } = useLibrary();
+  const { getTrackingStatus } = useGameTracking();
   const { openCollectionContextMenu } = useCollectionContextMenu();
   const { showSuccessToast, showErrorToast } = useToast();
   const [contextMenu, setContextMenu] = useState<{
@@ -151,6 +162,25 @@ export function LibraryTab({
     { value: "classics", label: t("platform_classics"), icon: ClassicsIcon },
   ];
 
+  const [trackingFilter, setTrackingFilter] =
+    useState<TrackingFilterOption>("all");
+
+  const trackingFilterOptions: FilterDropdownOption<TrackingFilterOption>[] = [
+    { value: "all", label: t("tracking_all"), icon: StackIcon },
+    { value: "playing", label: t("tracking_playing"), icon: PlayIcon },
+    { value: "finished", label: t("tracking_finished"), icon: CheckIcon },
+    { value: "dropped", label: t("tracking_dropped"), icon: XIcon },
+    { value: "wishlist", label: t("tracking_wishlist"), icon: BookmarkIcon },
+  ];
+
+  const visibleLibraryGames = useMemo(() => {
+    if (trackingFilter === "all") return libraryGames;
+
+    return libraryGames.filter(
+      (game) => getTrackingStatus(game.shop, game.objectId) === trackingFilter
+    );
+  }, [libraryGames, trackingFilter, getTrackingStatus]);
+
   const sortOptions: FilterDropdownOption<SortOption>[] = [
     ...(hasActiveSubscription
       ? [
@@ -193,6 +223,14 @@ export function LibraryTab({
             onChange={onSortChange}
           />
         )}
+        {isMe && (
+          <FilterDropdown
+            placeholder={t("tracking")}
+            value={trackingFilter}
+            options={trackingFilterOptions}
+            onChange={setTrackingFilter}
+          />
+        )}
       </div>
 
       {isAwaitingInitialLibrary && (
@@ -217,7 +255,7 @@ export function LibraryTab({
 
       {!isAwaitingInitialLibrary && hasAnyGames && (
         <div>
-          {hasPinnedGames && (
+          {hasPinnedGames && trackingFilter === "all" && (
             <div style={{ marginBottom: "2rem" }}>
               <div className="profile-content__section-header">
                 <div className="profile-content__section-title-group">
@@ -256,7 +294,7 @@ export function LibraryTab({
               </div>
 
               <InfiniteScroll
-                dataLength={libraryGames.length}
+                dataLength={visibleLibraryGames.length}
                 next={onLoadMore}
                 hasMore={hasMoreLibraryGames}
                 loader={null}
@@ -265,7 +303,7 @@ export function LibraryTab({
                 scrollableTarget="scrollableDiv"
               >
                 <ul className="profile-content__games-grid">
-                  {libraryGames?.map((game) => {
+                  {visibleLibraryGames?.map((game) => {
                     return (
                       <li
                         key={`${sortBy}-${game.objectId}`}

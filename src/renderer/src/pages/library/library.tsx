@@ -14,6 +14,7 @@ import {
   useAppSelector,
   useGameCollections,
   useUserDetails,
+  useGameTracking,
 } from "@renderer/hooks";
 import { setHeaderTitle } from "@renderer/features";
 import {
@@ -36,6 +37,7 @@ import { ViewOptions, ViewMode } from "./view-options";
 import { FilterOptions, SortOption } from "./filter-options";
 import { CategoryFilter, LibraryCategory } from "./category-filter";
 import { PlatformFilter } from "./platform-filter";
+import { TrackingFilter, type TrackingFilterValue } from "./tracking-filter";
 import { CollectionsFilter } from "./collections-filter";
 import {
   ClassicsOnboardingModal,
@@ -70,6 +72,7 @@ const SORT_OPTIONS: SortOption[] = [
 
 export default function Library() {
   const { library, updateLibrary } = useLibrary();
+  const { getTrackingStatus } = useGameTracking();
   const { userDetails } = useUserDetails();
   const {
     collections,
@@ -107,6 +110,8 @@ export default function Library() {
     return "all";
   });
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
+  const [selectedTrackingStatus, setSelectedTrackingStatus] =
+    useState<TrackingFilterValue>("all");
   const [isImportingClassics, setIsImportingClassics] = useState(false);
 
   // The category switch and platform filter are always available, so the
@@ -353,6 +358,13 @@ export default function Library() {
       );
     }
 
+    if (selectedTrackingStatus !== "all") {
+      filtered = filtered.filter(
+        (game) =>
+          getTrackingStatus(game.shop, game.objectId) === selectedTrackingStatus
+      );
+    }
+
     const queryLower = removeDiacritics(deferredSearchQuery).toLowerCase();
 
     if (!queryLower.trim()) return filtered;
@@ -379,6 +391,8 @@ export default function Library() {
     selectedCollectionId,
     effectiveCategory,
     selectedPlatform,
+    selectedTrackingStatus,
+    getTrackingStatus,
   ]);
 
   const uniquePlatforms = useMemo(() => {
@@ -447,6 +461,7 @@ export default function Library() {
   }, [
     effectiveCategory,
     selectedPlatform,
+    selectedTrackingStatus,
     sortBy,
     selectedCollectionId,
     setHeaderHidden,
@@ -500,6 +515,10 @@ export default function Library() {
             </div>
 
             <div className="library__controls-right">
+              <TrackingFilter
+                value={selectedTrackingStatus}
+                onStatusChange={setSelectedTrackingStatus}
+              />
               <FilterOptions sortBy={sortBy} onSortChange={handleSortChange} />
               {effectiveCategory !== "pc" && (
                 <PlatformFilter

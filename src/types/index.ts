@@ -671,6 +671,19 @@ export type CatalogueSearchResult = {
   skus?: string[];
 } & Pick<ShopAssets, "libraryImageUrl" | "downloadSources">;
 
+export type GameTrackingStatus =
+  | "playing"
+  | "finished"
+  | "dropped"
+  | "wishlist";
+
+export interface GameTrackingRecord {
+  shop: GameShop;
+  objectId: string;
+  status: GameTrackingStatus;
+  updatedAt: number;
+}
+
 export type LibraryGame = Game &
   Partial<ShopAssets> & {
     id: string;
